@@ -3,7 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-
+const auth = require('../middleware/auth');
 // Route Signup
 router.post('/signup', async (req, res) => {
   const { nom, prenom, email, password, number, role, bloc } = req.body;
@@ -59,6 +59,25 @@ router.post('/login', async (req, res) => {
       });
     } catch (error) {
       res.status(500).json({ message: 'Erreur serveur' });
+    }
+  });
+
+  router.get('/me', auth(), async (req, res) => {
+    try {
+      // Récupérer l'utilisateur à partir de l'ID contenu dans le token
+      const user = await User.findById(req.user.id).select('-password'); // Exclure le mot de passe
+      if (!user) {
+        return res.status(404).json({ message: 'Utilisateur non trouvé' });
+      }
+  
+      // Peupler le champ bloc si l'utilisateur est un chef de bloc
+      if (user.role === 'chef_de_bloc') {
+        await user.populate('bloc', 'name');
+      }
+  
+      res.json(user);
+    } catch (error) {
+      res.status(500).json({ message: 'Erreur serveur', error });
     }
   });
 
